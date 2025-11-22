@@ -14,8 +14,8 @@ app.use(express.json());
 
 // ✅ PostgreSQL connection setup (Neon)
 const pool = new Pool({
-connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:GayathriIndhu@ep-silent-smoke-ahsv79yr-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require'
-
+  connectionString: process.env.DATABASE_URL || 
+  'postgresql://neondb_owner:GayathriIndhu@ep-silent-smoke-ahsv79yr-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require'
 });
 
 // ✅ Ensure table exists
@@ -87,8 +87,7 @@ app.get('/api/links', async (req, res) => {
   }
 });
 
-// ✅ Redirect short links
-
+// ✅ Redirect short links (store IST time properly)
 app.get('/:code', async (req, res) => {
   const { code } = req.params;
   try {
@@ -97,23 +96,23 @@ app.get('/:code', async (req, res) => {
 
     const link = result.rows[0];
 
-    // ✅ Convert current UTC time to IST before storing
-    const istTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
-    const formattedTime = new Date(istTime);
+    // ✅ Convert UTC → IST manually
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC +5:30
+    const istTime = new Date(now.getTime() + istOffset);
 
     await pool.query(
       'UPDATE links SET clicks = clicks + 1, lastclicked = $1 WHERE code = $2',
-      [formattedTime, code]
+      [istTime, code]
     );
 
-    console.log(`✅ Redirected ${code} → ${link.url} at ${formattedTime}`);
+    console.log(`✅ Redirected ${code} → ${link.url} at ${istTime}`);
     res.redirect(link.url);
   } catch (err) {
     console.error('Redirect error:', err);
     res.status(500).send('Server error');
   }
 });
-
 
 // ✅ Delete short link
 app.delete('/api/links/:code', async (req, res) => {
