@@ -4,18 +4,17 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Enable CORS (for frontend access)
+// ✅ Enable CORS
 app.use(cors({
-  origin: '*', // Allow all origins for now (you can restrict later)
+  origin: '*',
   methods: ['GET', 'POST', 'DELETE'],
   allowedHeaders: ['Content-Type']
 }));
-
 app.use(express.json());
 
 // ✅ PostgreSQL connection setup (Neon)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:GayathriIndhu@07-silent-smoke-ahsv79yr-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:GayathriIndhu@07-silent-smoke-ahsv79yr-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require'
 });
 
 // ✅ Ensure table exists
@@ -48,13 +47,12 @@ app.get('/healthz', (req, res) => {
   });
 });
 
-// ✅ Create short link (prevent duplicate URLs)
+// ✅ Create short link
 app.post('/api/links', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
 
   try {
-    // Check for duplicate URL
     const existing = await pool.query('SELECT code FROM links WHERE url = $1', [url]);
     if (existing.rows.length > 0) {
       const code = existing.rows[0].code;
@@ -64,10 +62,9 @@ app.post('/api/links', async (req, res) => {
       });
     }
 
-    // Generate a new short code
     const code = Math.random().toString(36).substring(2, 8);
-
     await pool.query('INSERT INTO links (code, url) VALUES ($1, $2)', [code, url]);
+
     res.json({
       message: 'Short link created successfully!',
       short_url: `https://tinylink-backend-tyfm.onrender.com/${code}`
@@ -89,7 +86,7 @@ app.get('/api/links', async (req, res) => {
   }
 });
 
-// ✅ Redirect route (track clicks and time in IST)
+// ✅ Redirect short links
 app.get('/:code', async (req, res) => {
   const { code } = req.params;
   try {
@@ -125,7 +122,7 @@ app.delete('/api/links/:code', async (req, res) => {
   }
 });
 
-// ✅ Start server (for Render)
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
