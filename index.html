@@ -98,8 +98,10 @@
   const table = document.getElementById("linksTable");
   const emptyState = document.getElementById("emptyState");
   const searchBox = document.getElementById("searchBox");
-  const API = "http://localhost:3000/api/links";
-  const BASE_URL = "http://localhost:3000/";
+
+  // ✅ Updated backend URLs
+  const API = "https://tinylink-backend-tyfm.onrender.com/api/links";
+  const BASE_URL = "https://tinylink-backend-tyfm.onrender.com/";
 
   function updateStats(links) {
     document.getElementById("totalLinks").textContent = links.length;
@@ -109,6 +111,7 @@
   async function loadLinks(filter = "") {
     try {
       const res = await fetch(API);
+      if (!res.ok) throw new Error("Failed to fetch links");
       let links = await res.json();
 
       if (filter.trim()) {
@@ -174,25 +177,28 @@
     if (!url) return alert("Please enter a URL");
 
     try {
-  const res = await fetch(API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url })
-  });
-  const data = await res.json();
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
 
-  if (data.message === "Short link already exists!") {
-    alert("⚠️ Duplicate URL already present!");
-  } else {
-    alert("✅ Short URL created successfully!");
-  }
+      const data = await res.json();
 
-  input.value = "";
-  loadLinks();
-} catch (error) {
-  alert("❌ Error creating short link. Please try again.");
-}
+      if (data.message === "Short link already exists!") {
+        alert("⚠️ Duplicate URL already present!");
+      } else if (data.short_url) {
+        alert("✅ Short URL created successfully!");
+      } else {
+        throw new Error("Unexpected response from server");
+      }
 
+      input.value = "";
+      loadLinks();
+    } catch (error) {
+      console.error("Error creating short link:", error);
+      alert("❌ Error creating short link. Please try again.");
+    }
   });
 
   async function deleteLink(code) {
