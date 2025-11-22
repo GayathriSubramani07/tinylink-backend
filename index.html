@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TinyLink Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen p-6">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-8 animate-slide-in">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-lg mb-4">
+        <span class="text-3xl">🔗</span>
+      </div>
+      <h1 class="text-4xl font-bold text-white mb-2">TinyLink Dashboard</h1>
+      <p class="text-purple-100">Create and manage your shortened URLs with ease</p>
+    </div>
+
+    <div class="glass-effect rounded-3xl shadow-2xl p-8 animate-slide-in">
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span class="w-2 h-2 bg-purple-600 rounded-full"></span>
+          Create Short Link
+        </h2>
+        <form id="shortenForm" class="flex gap-3">
+          <div class="flex-grow relative">
+            <input id="urlInput" type="text" placeholder="Enter your long URL here..." 
+              class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all">
+          </div>
+          <button type="submit" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:shadow-lg hover:scale-105 transition-all font-semibold">
+            Shorten
+          </button>
+        </form>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-8">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold text-blue-600" id="totalLinks">0</div>
+          <div class="text-sm text-blue-800 font-medium">Total Links</div>
+        </div>
+        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold text-green-600" id="totalClicks">0</div>
+          <div class="text-sm text-green-800 font-medium">Total Clicks</div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span class="w-2 h-2 bg-purple-600 rounded-full"></span>
+          Your Links
+        </h2>
+
+        <input id="searchBox" type="text" placeholder="🔍 Search by short URL..."
+          class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all">
+
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Short URL</th>
+                <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Original URL</th>
+                <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">Clicks</th>
+                <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">Last Clicked</th>
+                <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="linksTable" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+
+        <div id="emptyState" class="text-center py-12 hidden">
+          <div class="text-6xl mb-4">📭</div>
+          <p class="text-gray-500 font-medium">No links yet. Create your first short link above!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const form = document.getElementById("shortenForm");
+  const input = document.getElementById("urlInput");
+  const table = document.getElementById("linksTable");
+  const emptyState = document.getElementById("emptyState");
+  const searchBox = document.getElementById("searchBox");
+  const API = "http://localhost:3000/api/links";
+  const BASE_URL = "http://localhost:3000/";
+
+  function updateStats(links) {
+    document.getElementById("totalLinks").textContent = links.length;
+    document.getElementById("totalClicks").textContent = links.reduce((a, l) => a + l.clicks, 0);
+  }
+
+  async function loadLinks(filter = "") {
+    try {
+      const res = await fetch(API);
+      let links = await res.json();
+
+      if (filter.trim()) {
+        links = links.filter(l => (l.code || "").toLowerCase().includes(filter.toLowerCase()));
+      }
+
+      updateStats(links);
+      table.innerHTML = "";
+
+      if (links.length === 0) {
+        emptyState.classList.remove("hidden");
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+      links.forEach((l) => {
+        const shortUrl = BASE_URL + l.code;
+        const lastClicked = l.lastclicked
+          ? new Date(l.lastclicked).toLocaleString("en-IN", { 
+              timeZone: "Asia/Kolkata",
+              day: "2-digit", month: "short", year: "numeric",
+              hour: "numeric", minute: "2-digit",
+              hour12: true
+            })
+          : "—";
+
+        const row = document.createElement("tr");
+        row.className = "hover:bg-purple-50 transition-colors animate-slide-in";
+        row.innerHTML = `
+          <td class='px-6 py-4'>
+            <a href="${shortUrl}" target="_blank" onclick="setTimeout(loadLinks, 1000)"
+              class="text-purple-600 font-mono font-semibold hover:underline flex items-center gap-2">
+              <span class="text-lg">🔗</span>${shortUrl}
+            </a>
+          </td>
+          <td class='px-6 py-4'>
+            <a href="${l.url}" target="_blank" class="text-gray-700 hover:text-purple-600 transition-colors block truncate max-w-xs" title="${l.url}">
+              ${l.url}
+            </a>
+          </td>
+          <td class='px-6 py-4 text-center'>
+            <span class="inline-flex items-center justify-center bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">${l.clicks}</span>
+          </td>
+          <td class='px-6 py-4 text-center text-sm text-gray-600'>
+            ${lastClicked}
+          </td>
+          <td class='px-6 py-4 text-center'>
+            <button onclick="deleteLink('${l.code}')"
+              class='bg-gradient-to-r from-red-500 to-rose-500 text-white px-4 py-2 rounded-lg hover:shadow-lg hover:scale-105 transition-all text-sm font-medium'>
+              Delete
+            </button>
+          </td>`;
+        table.appendChild(row);
+      });
+    } catch (err) {
+      console.error("Error loading links:", err);
+    }
+  }
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const url = input.value.trim();
+    if (!url) return alert("Please enter a URL");
+
+    try {
+  const res = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url })
+  });
+  const data = await res.json();
+
+  if (data.message === "Short link already exists!") {
+    alert("⚠️ Duplicate URL already present!");
+  } else {
+    alert("✅ Short URL created successfully!");
+  }
+
+  input.value = "";
+  loadLinks();
+} catch (error) {
+  alert("❌ Error creating short link. Please try again.");
+}
+
+  });
+
+  async function deleteLink(code) {
+    if (!confirm("Delete this link?")) return;
+    await fetch(`${API}/${code}`, { method: "DELETE" });
+    loadLinks();
+  }
+
+  searchBox.addEventListener("input", e => loadLinks(e.target.value));
+  loadLinks();
+</script>
+</body>
+</html>
