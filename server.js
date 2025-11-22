@@ -15,7 +15,7 @@ app.use(express.json());
 
 // ✅ PostgreSQL connection setup (Neon)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_rl0j4dOBoFPG@ep-silent-smoke-ahsv79yr-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:GayathriIndhu@07-silent-smoke-ahsv79yr-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 });
 
 // ✅ Ensure table exists
