@@ -48,7 +48,7 @@ app.get('/healthz', (req, res) => {
   });
 });
 
-// ✅ Create short link
+// ✅ Create short link (prevents duplicates)
 app.post('/api/links', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
@@ -87,7 +87,7 @@ app.get('/api/links', async (req, res) => {
   }
 });
 
-// ✅ Redirect short links (store IST time properly)
+// ✅ Redirect short links (store proper IST time)
 app.get('/:code', async (req, res) => {
   const { code } = req.params;
   try {
@@ -96,17 +96,13 @@ app.get('/:code', async (req, res) => {
 
     const link = result.rows[0];
 
-    // ✅ Convert UTC → IST manually
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC +5:30
-    const istTime = new Date(now.getTime() + istOffset);
-
+    // ✅ Store actual Indian Standard Time directly via Postgres
     await pool.query(
-      'UPDATE links SET clicks = clicks + 1, lastclicked = $1 WHERE code = $2',
-      [istTime, code]
+      "UPDATE links SET clicks = clicks + 1, lastclicked = (NOW() AT TIME ZONE 'Asia/Kolkata') WHERE code = $1",
+      [code]
     );
 
-    console.log(`✅ Redirected ${code} → ${link.url} at ${istTime}`);
+    console.log(`✅ Redirected ${code} → ${link.url}`);
     res.redirect(link.url);
   } catch (err) {
     console.error('Redirect error:', err);
